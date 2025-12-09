@@ -50,6 +50,15 @@ public class OllamaService {
     public String generateCommitMessage(@NotNull String diffContent, @Nullable ProgressIndicator indicator) throws IOException {
         OllamaSettingsState settings = OllamaSettingsState.getInstance();
 
+        if (settings.provider == OllamaSettingsState.Provider.OPENAI) {
+            return generateWithOpenAi(diffContent, settings, indicator);
+        }
+
+        return generateWithOllama(diffContent, settings, indicator);
+    }
+
+    private String generateWithOllama(@NotNull String diffContent, OllamaSettingsState settings,
+                                      @Nullable ProgressIndicator indicator) throws IOException {
         OkHttpClient client = new OkHttpClient.Builder()
                 .connectTimeout(settings.timeout, TimeUnit.SECONDS)
                 .readTimeout(settings.timeout, TimeUnit.SECONDS)
@@ -61,7 +70,7 @@ public class OllamaService {
 
         // Build request body
         JsonObject requestBody = new JsonObject();
-        requestBody.addProperty("model", settings.modelName);
+        requestBody.addProperty("model", settings.ollamaModel);
         requestBody.addProperty("prompt", userPrompt);
         requestBody.addProperty("system", settings.systemPrompt);
         requestBody.addProperty("stream", false);
@@ -71,7 +80,7 @@ public class OllamaService {
         // Log request information
         System.out.println("=== Ollama Request ===");
         System.out.println("Endpoint: " + settings.ollamaEndpoint + "/api/generate");
-        System.out.println("Model: " + settings.modelName);
+        System.out.println("Model: " + settings.ollamaModel);
         System.out.println("System Prompt: " + settings.systemPrompt);
         System.out.println("User Prompt: " + userPrompt);
         System.out.println("Full Request Body: " + jsonBody);
@@ -136,6 +145,123 @@ public class OllamaService {
         } finally {
             ongoingCall = null;
         }
+    }
+
+    private String generateWithOpenAi(@NotNull String diffContent, OllamaSettingsState settings,
+                                      @Nullable ProgressIndicator indicator) throws IOException {
+        OkHttpClient client = new OkHttpClient.Builder()
+                .connectTimeout(settings.timeout, TimeUnit.SECONDS)
+                .readTimeout(settings.timeout, TimeUnit.SECONDS)
+                .writeTimeout(settings.timeout, TimeUnit.SECONDS)
+                .build();
+
+        String userPrompt = buildPrompt(diffContent);
+
+        JsonObject systemMessage = new JsonObject();
+        systemMessage.addProperty("role", "system");
+        systemMessage.addProperty("content", settings.systemPrompt);
+
+        JsonObject userMessage = new JsonObject();
+        userMessage.addProperty("role", "user");
+        userMessage.addProperty("content", userPrompt);
+
+        com.google.gson.JsonArray messages = new com.google.gson.JsonArray();
+        messages.add(systemMessage);
+        messages.add(userMessage);
+
+        JsonObject requestBody = new JsonObject();
+        requestBody.addProperty("model", settings.openAiModel);
+        requestBody.add("messages", messages);
+        requestBody.addProperty("stream", false);
+
+        String url = normalizeBaseUrl(settings.openAiEndpoint) + "/v1/chat/completions";
+        String jsonBody = gson.toJson(requestBody);
+
+        System.out.println("=== OpenAI Request ===");
+        System.out.println("Endpoint: " + url);
+        System.out.println("Model: " + settings.openAiModel);
+        System.out.println("System Prompt: " + settings.systemPrompt);
+        System.out.println("User Prompt: " + userPrompt);
+        System.out.println("Full Request Body: " + jsonBody);
+        System.out.println("=====================");
+
+        RequestBody body = RequestBody.create(jsonBody, JSON);
+        Request request = new Request.Builder()
+                .url(url)
+                .post(body)
+                .addHeader("Authorization", "Bearer " + settings.openAiApiKey)
+                .build();
+
+        Call call = client.newCall(request);
+        ongoingCall = call;
+
+        try {
+            if (indicator != null && indicator.isCanceled()) {
+                throw new ProcessCanceledException();
+            }
+
+            try (Response response = call.execute()) {
+                if (indicator != null && indicator.isCanceled()) {
+                    throw new ProcessCanceledException();
+                }
+
+                if (!response.isSuccessful()) {
+                    String errorMsg = "Unexpected response code: " + response;
+                    System.err.println("OpenAI Error: " + errorMsg);
+                    throw new IOException(errorMsg);
+                }
+
+                String responseBody = response.body().string();
+                System.out.println("=== OpenAI Response ===");
+                System.out.println("Raw Response: " + responseBody);
+
+                JsonObject jsonResponse = gson.fromJson(responseBody, JsonObject.class);
+                if (jsonResponse.has("choices") && jsonResponse.get("choices").isJsonArray()
+                        && jsonResponse.getAsJsonArray("choices").size() > 0) {
+                    JsonObject firstChoice = jsonResponse.getAsJsonArray("choices").get(0).getAsJsonObject();
+                    JsonObject message = firstChoice.has("message") ? firstChoice.getAsJsonObject("message") : null;
+                    String rawResponse = message != null && message.has("content")
+                            ? message.get("content").getAsString().trim()
+                            : null;
+
+                    if (rawResponse == null) {
+                        throw new IOException("Invalid response format from OpenAI: missing content");
+                    }
+
+                    System.out.println("Raw Message: " + rawResponse);
+
+                    String cleanedResponse = removeThinkTags(rawResponse);
+                    String finalMessage = extractCommitMessage(cleanedResponse);
+                    System.out.println("Final Message: " + finalMessage);
+                    System.out.println("======================");
+
+                    return finalMessage;
+                } else {
+                    String errorMsg = "Invalid response format from OpenAI";
+                    System.err.println("OpenAI Error: " + errorMsg);
+                    throw new IOException(errorMsg);
+                }
+            }
+        } catch (ProcessCanceledException canceled) {
+            throw canceled;
+        } catch (IOException ex) {
+            if (indicator != null && indicator.isCanceled()) {
+                throw new ProcessCanceledException();
+            }
+            throw ex;
+        } finally {
+            ongoingCall = null;
+        }
+    }
+
+    private String normalizeBaseUrl(String base) {
+        if (base == null || base.isEmpty()) {
+            return "";
+        }
+        if (base.endsWith("/")) {
+            return base.substring(0, base.length() - 1);
+        }
+        return base;
     }
 
     /**

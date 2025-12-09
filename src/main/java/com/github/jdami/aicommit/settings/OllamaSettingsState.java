@@ -14,8 +14,22 @@ import org.jetbrains.annotations.Nullable;
 @State(name = "com.github.jdami.aicommit.settings.OllamaSettingsState", storages = @Storage("OllamaSettings.xml"))
 public class OllamaSettingsState implements PersistentStateComponent<OllamaSettingsState> {
 
+    public enum Provider {
+        OLLAMA,
+        OPENAI
+    }
+
+    public Provider provider = Provider.OLLAMA;
+
     public String ollamaEndpoint = "http://localhost:11434";
+    public String ollamaModel = "qwen3:8b";
+    // Deprecated legacy field kept for migration compatibility
     public String modelName = "qwen3:8b";
+
+    public String openAiEndpoint = "https://api.openai.com";
+    public String openAiApiKey = "";
+    public String openAiModel = "gpt-4o-mini";
+
     public int timeout = 30;
     public String systemPrompt = "CRITICAL: You are a commit message generator. You MUST output ONLY the commit message in the exact format below. NO explanations, NO analysis, NO extra text, NO markdown.\n\n"
             +
@@ -63,14 +77,22 @@ public class OllamaSettingsState implements PersistentStateComponent<OllamaSetti
     @Override
     public void loadState(@NotNull OllamaSettingsState state) {
         XmlSerializerUtil.copyBean(state, this);
+        if (this.ollamaModel == null || this.ollamaModel.isEmpty()) {
+            this.ollamaModel = this.modelName;
+        }
     }
 
     /**
      * Reset settings to default values
      */
     public void resetToDefaults() {
+        this.provider = Provider.OLLAMA;
         this.ollamaEndpoint = "http://localhost:11434";
+        this.ollamaModel = "qwen3:8b";
         this.modelName = "qwen3:8b";
+        this.openAiEndpoint = "https://api.openai.com";
+        this.openAiApiKey = "";
+        this.openAiModel = "gpt-4o-mini";
         this.timeout = 30;
         this.systemPrompt = "CRITICAL: You are a commit message generator. You MUST output ONLY the commit message in the exact format below. NO explanations, NO analysis, NO extra text, NO markdown.\n\n"
                 +

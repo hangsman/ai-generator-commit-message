@@ -1,13 +1,13 @@
 # AI Commit Message Generator
 
-一个 IntelliJ IDEA 插件,使用 Ollama AI 根据代码变更自动生成 commit message。
+一个 IntelliJ IDEA 插件,使用 Ollama 或 OpenAI 根据代码变更自动生成 commit message。
 
 ## 功能特性
 
 - ✨ 在 commit 对话框中添加"生成 Commit Message"按钮
 - 🤖 分析暂存的代码变更并生成有意义的 commit message
-- ⚙️ 可自定义 Ollama 服务端点
-- 🎯 支持自定义 AI 模型
+- ⚙️ 可自定义 Ollama/OpenAI API 地址与模型
+- 🔀 设置页可切换模型厂商,不同厂商支持不同参数
 - 📝 可配置系统提示词以控制生成风格
 
 ## 前置要求
@@ -40,8 +40,9 @@ cd ai-generator-commit-message
 
 1. 打开 `Settings/Preferences` → `Tools` → `AI Commit Message Generator`
 2. 配置以下选项:
-   - **Ollama Endpoint**: Ollama 服务地址(默认: `http://localhost:11434`)
-   - **Model Name**: 使用的模型名称(默认: `qwen3:8b`)
+   - **Provider**: 选择 `Ollama` 或 `OpenAI`
+   - **Ollama Endpoint / Model**: 服务地址(默认 `http://localhost:11434`) 与模型(默认 `qwen3:8b`)
+   - **OpenAI API Base / Model / Key**: API 基地址(默认 `https://api.openai.com`)、模型(默认 `gpt-4o-mini`)与 API Key
    - **Timeout**: 请求超时时间(秒)
    - **System Prompt**: 系统提示词,用于指导 AI 生成风格
 
