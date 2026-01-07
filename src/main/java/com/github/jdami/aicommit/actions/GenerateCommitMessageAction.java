@@ -150,6 +150,8 @@ public class GenerateCommitMessageAction extends AnAction {
             // Use git diff to get actual diff content
             for (Change change : changes) {
                 String absolutePath = null;
+                boolean isNewFile = change.getBeforeRevision() == null;
+                boolean isDeletedFile = change.getAfterRevision() == null;
 
                 if (change.getAfterRevision() != null) {
                     absolutePath = change.getAfterRevision().getFile().getPath();
@@ -167,28 +169,66 @@ public class GenerateCommitMessageAction extends AnAction {
                         }
                     }
 
-                    System.out.println("Processing file: " + relativePath);
+                    String changeType = isNewFile ? "NEW" : (isDeletedFile ? "DELETED" : "MODIFIED");
+                    System.out.println("Processing file: " + relativePath + " [" + changeType + "]");
 
                     try {
                         String fileDiff = null;
 
-                        // Try 1: Staged changes (git diff --cached)
-                        fileDiff = executeGitDiff(repoPath, "diff", "--cached", "--", relativePath);
+                        if (isNewFile) {
+                            // For new files, try different strategies
+                            // Try 1: Staged new file
+                            fileDiff = executeGitDiff(repoPath, "diff", "--cached", "HEAD", "--", relativePath);
+                            
+                            // Try 2: If not staged, check if it's added to index
+                            if (fileDiff.isEmpty()) {
+                                fileDiff = executeGitDiff(repoPath, "diff", "--cached", "--", relativePath);
+                            }
+                            
+                            // Try 3: For completely new untracked files, show the content as added
+                            if (fileDiff.isEmpty()) {
+                                // Check if file exists and show it as new content
+                                String showContent = executeGitDiff(repoPath, "show", ":" + relativePath);
+                                if (!showContent.isEmpty()) {
+                                    // Format as diff
+                                    fileDiff = "diff --git a/" + relativePath + " b/" + relativePath + "\n" +
+                                              "new file mode 100644\n" +
+                                              "--- /dev/null\n" +
+                                              "+++ b/" + relativePath + "\n" +
+                                              "@@ -0,0 +1," + showContent.split("\n").length + " @@\n";
+                                    for (String line : showContent.split("\n")) {
+                                        fileDiff += "+" + line + "\n";
+                                    }
+                                }
+                            }
+                        } else if (isDeletedFile) {
+                            // For deleted files
+                            fileDiff = executeGitDiff(repoPath, "diff", "--cached", "--", relativePath);
+                            
+                            if (fileDiff.isEmpty()) {
+                                fileDiff = executeGitDiff(repoPath, "diff", "HEAD", "--", relativePath);
+                            }
+                        } else {
+                            // For modified files
+                            // Try 1: Staged changes (git diff --cached)
+                            fileDiff = executeGitDiff(repoPath, "diff", "--cached", "--", relativePath);
 
-                        // Try 2: Unstaged changes (git diff)
-                        if (fileDiff.isEmpty()) {
-                            fileDiff = executeGitDiff(repoPath, "diff", "--", relativePath);
-                        }
+                            // Try 2: Unstaged changes (git diff)
+                            if (fileDiff.isEmpty()) {
+                                fileDiff = executeGitDiff(repoPath, "diff", "--", relativePath);
+                            }
 
-                        // Try 3: Compare with HEAD (for new/untracked files or modified files)
-                        if (fileDiff.isEmpty()) {
-                            fileDiff = executeGitDiff(repoPath, "diff", "HEAD", "--", relativePath);
+                            // Try 3: Compare with HEAD
+                            if (fileDiff.isEmpty()) {
+                                fileDiff = executeGitDiff(repoPath, "diff", "HEAD", "--", relativePath);
+                            }
                         }
 
                         if (!fileDiff.isEmpty()) {
                             diffBuilder.append(fileDiff);
+                            System.out.println("Successfully got diff for: " + relativePath + " (" + fileDiff.length() + " chars)");
                         } else {
-                            System.err.println("No diff found for file: " + relativePath);
+                            System.err.println("No diff found for file: " + relativePath + " [" + changeType + "]");
                         }
                     } catch (Exception e) {
                         System.err.println("Error getting diff for file " + relativePath + ": " + e.getMessage());
