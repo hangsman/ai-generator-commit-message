@@ -1,7 +1,13 @@
 package com.github.jdami.aicommit.settings;
 
+import com.github.jdami.aicommit.service.model.GenerationInputs;
+import com.github.jdami.aicommit.service.provider.OllamaProviderClient;
+import com.github.jdami.aicommit.service.provider.OpenAiProviderClient;
+import com.github.jdami.aicommit.service.provider.OpenRouterProviderClient;
 import com.github.jdami.aicommit.settings.AiSettingsState.Provider;
 import com.github.jdami.aicommit.settings.model.ProviderSettings;
+import com.intellij.openapi.progress.ProgressManager;
+import com.intellij.openapi.ui.Messages;
 import com.intellij.ui.components.JBLabel;
 import com.intellij.ui.components.JBPasswordField;
 import com.intellij.ui.components.JBTextField;
@@ -53,25 +59,37 @@ public class AiSettingsComponent {
     }
 
     private JPanel buildOllamaPanel() {
+        JButton testButton = new JButton("Test Connection");
+        testButton.addActionListener(e -> testConnection(Provider.OLLAMA));
+        
         return FormBuilder.createFormBuilder()
                 .addLabeledComponent(new JBLabel("Ollama Endpoint: "), ollamaEndpointField, 1, false)
                 .addLabeledComponent(new JBLabel("Ollama Model: "), ollamaModelField, 1, false)
+                .addLabeledComponent(new JBLabel(""), testButton, 1, false)
                 .getPanel();
     }
 
     private JPanel buildOpenAiPanel() {
+        JButton testButton = new JButton("Test Connection");
+        testButton.addActionListener(e -> testConnection(Provider.OPENAI));
+        
         return FormBuilder.createFormBuilder()
                 .addLabeledComponent(new JBLabel("OpenAI API Base: "), openAiEndpointField, 1, false)
                 .addLabeledComponent(new JBLabel("OpenAI Model: "), openAiModelField, 1, false)
                 .addLabeledComponent(new JBLabel("OpenAI API Key: "), openAiApiKeyField, 1, false)
+                .addLabeledComponent(new JBLabel(""), testButton, 1, false)
                 .getPanel();
     }
 
     private JPanel buildOpenRouterPanel() {
+        JButton testButton = new JButton("Test Connection");
+        testButton.addActionListener(e -> testConnection(Provider.OPENROUTER));
+        
         return FormBuilder.createFormBuilder()
                 .addLabeledComponent(new JBLabel("OpenRouter API Base: "), openRouterEndpointField, 1, false)
                 .addLabeledComponent(new JBLabel("OpenRouter Model: "), openRouterModelField, 1, false)
                 .addLabeledComponent(new JBLabel("OpenRouter API Key: "), openRouterApiKeyField, 1, false)
+                .addLabeledComponent(new JBLabel(""), testButton, 1, false)
                 .getPanel();
     }
 
@@ -186,5 +204,94 @@ public class AiSettingsComponent {
         CardLayout layout = (CardLayout) providerCards.getLayout();
         Provider provider = getProvider() != null ? getProvider() : Provider.OLLAMA;
         layout.show(providerCards, provider.name());
+    }
+
+    private void testConnection(Provider provider) {
+        // Get configuration based on provider
+        final String endpoint;
+        final String model;
+        final String apiKey;
+        
+        switch (provider) {
+            case OLLAMA:
+                endpoint = getOllamaEndpoint().trim();
+                model = getOllamaModel().trim();
+                apiKey = "";
+                break;
+            case OPENAI:
+                endpoint = getOpenAiEndpoint().trim();
+                model = getOpenAiModel().trim();
+                apiKey = getOpenAiApiKey().trim();
+                break;
+            case OPENROUTER:
+                endpoint = getOpenRouterEndpoint().trim();
+                model = getOpenRouterModel().trim();
+                apiKey = getOpenRouterApiKey().trim();
+                break;
+            default:
+                throw new IllegalStateException("Unknown provider: " + provider);
+        }
+        
+        // Validate inputs
+        if (endpoint.isEmpty()) {
+            Messages.showErrorDialog("Endpoint cannot be empty", "Test Connection Failed");
+            return;
+        }
+        if (model.isEmpty()) {
+            Messages.showErrorDialog("Model cannot be empty", "Test Connection Failed");
+            return;
+        }
+        if ((provider == Provider.OPENAI || provider == Provider.OPENROUTER) && apiKey.isEmpty()) {
+            Messages.showErrorDialog("API Key cannot be empty", "Test Connection Failed");
+            return;
+        }
+        
+        // Test connection in background
+        ProgressManager.getInstance().runProcessWithProgressSynchronously(() -> {
+            try {
+                // Create test inputs
+                GenerationInputs inputs = new GenerationInputs(
+                        "Test connection",
+                        "You are a test assistant. Reply with 'OK' if you receive this message.",
+                        endpoint,
+                        model,
+                        apiKey,
+                        getTimeout()
+                );
+                
+                // Select the appropriate client and test
+                String response;
+                switch (provider) {
+                    case OLLAMA:
+                        response = new OllamaProviderClient().generate(inputs, null);
+                        break;
+                    case OPENAI:
+                        response = new OpenAiProviderClient().generate(inputs, null);
+                        break;
+                    case OPENROUTER:
+                        response = new OpenRouterProviderClient().generate(inputs, null);
+                        break;
+                    default:
+                        throw new IllegalStateException("Unknown provider: " + provider);
+                }
+                
+                // Show success message
+                String finalResponse = response;
+                SwingUtilities.invokeLater(() -> 
+                    Messages.showInfoMessage(
+                        "Connection successful!\n\nProvider: " + provider + "\nModel: " + model + "\nResponse: " + finalResponse.substring(0, Math.min(100, finalResponse.length())) + "...",
+                        "Test Connection Successful"
+                    )
+                );
+                
+            } catch (Exception ex) {
+                SwingUtilities.invokeLater(() -> 
+                    Messages.showErrorDialog(
+                        "Connection failed: " + ex.getMessage(),
+                        "Test Connection Failed"
+                    )
+                );
+            }
+        }, "Testing Connection...", true, null);
     }
 }
