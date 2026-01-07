@@ -44,6 +44,9 @@ public class AiSettingsConfigurable implements Configurable {
         String currentOpenAiEndpoint = settingsComponent.getOpenAiEndpoint();
         String currentOpenAiModel = settingsComponent.getOpenAiModel();
         String currentOpenAiApiKey = settingsComponent.getOpenAiApiKey();
+        String currentOpenRouterEndpoint = settingsComponent.getOpenRouterEndpoint();
+        String currentOpenRouterModel = settingsComponent.getOpenRouterModel();
+        String currentOpenRouterApiKey = settingsComponent.getOpenRouterApiKey();
         int currentTimeout = settingsComponent.getTimeout();
         String currentSystemPrompt = settingsComponent.getSystemPrompt();
         
@@ -53,6 +56,9 @@ public class AiSettingsConfigurable implements Configurable {
                 || !currentOpenAiEndpoint.equals(settings.providers.openAi.endpoint)
                 || !currentOpenAiModel.equals(settings.providers.openAi.model)
                 || !currentOpenAiApiKey.equals(settings.providers.openAi.apiKey)
+                || !currentOpenRouterEndpoint.equals(settings.providers.openRouter.endpoint)
+                || !currentOpenRouterModel.equals(settings.providers.openRouter.model)
+                || !currentOpenRouterApiKey.equals(settings.providers.openRouter.apiKey)
                 || currentTimeout != settings.timeout
                 || !currentSystemPrompt.equals(settings.systemPrompt);
     }
@@ -73,6 +79,9 @@ public class AiSettingsConfigurable implements Configurable {
         String openAiEndpoint = settingsComponent.getOpenAiEndpoint().trim();
         String openAiModel = settingsComponent.getOpenAiModel().trim();
         String openAiApiKey = settingsComponent.getOpenAiApiKey().trim();
+        String openRouterEndpoint = settingsComponent.getOpenRouterEndpoint().trim();
+        String openRouterModel = settingsComponent.getOpenRouterModel().trim();
+        String openRouterApiKey = settingsComponent.getOpenRouterApiKey().trim();
         
         if (systemPrompt.isEmpty()) {
             throw new ConfigurationException("System prompt cannot be empty");
@@ -94,6 +103,16 @@ public class AiSettingsConfigurable implements Configurable {
             if (openAiApiKey.isEmpty()) {
                 throw new ConfigurationException("OpenAI API key cannot be empty");
             }
+        } else if (provider == Provider.OPENROUTER) {
+            if (openRouterEndpoint.isEmpty()) {
+                throw new ConfigurationException("OpenRouter API base cannot be empty");
+            }
+            if (openRouterModel.isEmpty()) {
+                throw new ConfigurationException("OpenRouter model cannot be empty");
+            }
+            if (openRouterApiKey.isEmpty()) {
+                throw new ConfigurationException("OpenRouter API key cannot be empty");
+            }
         }
         
         // Apply settings
@@ -104,6 +123,9 @@ public class AiSettingsConfigurable implements Configurable {
         providers.openAi.endpoint = openAiEndpoint;
         providers.openAi.model = openAiModel;
         providers.openAi.apiKey = openAiApiKey;
+        providers.openRouter.endpoint = openRouterEndpoint;
+        providers.openRouter.model = openRouterModel;
+        providers.openRouter.apiKey = openRouterApiKey;
         settings.providers = providers;
         // legacy fields
         settings.ollamaEndpoint = endpoint;
@@ -138,6 +160,12 @@ public class AiSettingsConfigurable implements Configurable {
                 ? providers.openAi.model : "gpt-4o-mini");
         settingsComponent.setOpenAiApiKey(providers.openAi != null && providers.openAi.apiKey != null
                 ? providers.openAi.apiKey : "");
+        settingsComponent.setOpenRouterEndpoint(providers.openRouter != null && providers.openRouter.endpoint != null
+                ? providers.openRouter.endpoint : "https://openrouter.ai/api");
+        settingsComponent.setOpenRouterModel(providers.openRouter != null && providers.openRouter.model != null
+                ? providers.openRouter.model : "anthropic/claude-3.5-sonnet");
+        settingsComponent.setOpenRouterApiKey(providers.openRouter != null && providers.openRouter.apiKey != null
+                ? providers.openRouter.apiKey : "");
         settingsComponent.setTimeout(settings.timeout);
         settingsComponent.setSystemPrompt(settings.systemPrompt != null ? settings.systemPrompt : getDefaultSystemPrompt());
     }

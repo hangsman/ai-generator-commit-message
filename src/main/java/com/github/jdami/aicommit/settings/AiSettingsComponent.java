@@ -24,6 +24,9 @@ public class AiSettingsComponent {
     private final JBTextField openAiEndpointField = new JBTextField();
     private final JBTextField openAiModelField = new JBTextField();
     private final JBPasswordField openAiApiKeyField = new JBPasswordField();
+    private final JBTextField openRouterEndpointField = new JBTextField();
+    private final JBTextField openRouterModelField = new JBTextField();
+    private final JBPasswordField openRouterApiKeyField = new JBPasswordField();
     private final JSpinner timeoutSpinner = new JSpinner(new SpinnerNumberModel(30, 5, 300, 5));
     private final JTextArea systemPromptArea = new JTextArea(5, 40);
 
@@ -34,6 +37,7 @@ public class AiSettingsComponent {
 
         providerCards.add(buildOllamaPanel(), Provider.OLLAMA.name());
         providerCards.add(buildOpenAiPanel(), Provider.OPENAI.name());
+        providerCards.add(buildOpenRouterPanel(), Provider.OPENROUTER.name());
 
         mainPanel = FormBuilder.createFormBuilder()
                 .addLabeledComponent(new JBLabel("Provider: "), providerCombo, 1, false)
@@ -63,6 +67,14 @@ public class AiSettingsComponent {
                 .getPanel();
     }
 
+    private JPanel buildOpenRouterPanel() {
+        return FormBuilder.createFormBuilder()
+                .addLabeledComponent(new JBLabel("OpenRouter API Base: "), openRouterEndpointField, 1, false)
+                .addLabeledComponent(new JBLabel("OpenRouter Model: "), openRouterModelField, 1, false)
+                .addLabeledComponent(new JBLabel("OpenRouter API Key: "), openRouterApiKeyField, 1, false)
+                .getPanel();
+    }
+
     public JPanel getPanel() {
         return mainPanel;
     }
@@ -89,6 +101,9 @@ public class AiSettingsComponent {
         setOpenAiEndpoint(providers.openAi != null ? providers.openAi.endpoint : "");
         setOpenAiModel(providers.openAi != null ? providers.openAi.model : "");
         setOpenAiApiKey(providers.openAi != null ? providers.openAi.apiKey : "");
+        setOpenRouterEndpoint(providers.openRouter != null ? providers.openRouter.endpoint : "");
+        setOpenRouterModel(providers.openRouter != null ? providers.openRouter.model : "");
+        setOpenRouterApiKey(providers.openRouter != null ? providers.openRouter.apiKey : "");
     }
 
     public void setOllamaEndpoint(String endpoint) {
@@ -141,6 +156,30 @@ public class AiSettingsComponent {
 
     public void setSystemPrompt(String prompt) {
         systemPromptArea.setText(prompt != null ? prompt : "");
+    }
+
+    public String getOpenRouterEndpoint() {
+        return openRouterEndpointField.getText() != null ? openRouterEndpointField.getText() : "";
+    }
+
+    public void setOpenRouterEndpoint(String endpoint) {
+        openRouterEndpointField.setText(endpoint != null ? endpoint : "");
+    }
+
+    public String getOpenRouterModel() {
+        return openRouterModelField.getText() != null ? openRouterModelField.getText() : "";
+    }
+
+    public void setOpenRouterModel(String model) {
+        openRouterModelField.setText(model != null ? model : "");
+    }
+
+    public String getOpenRouterApiKey() {
+        return openRouterApiKeyField.getPassword() != null ? String.valueOf(openRouterApiKeyField.getPassword()) : "";
+    }
+
+    public void setOpenRouterApiKey(String apiKey) {
+        openRouterApiKeyField.setText(apiKey != null ? apiKey : "");
     }
 
     private void switchProviderCard() {

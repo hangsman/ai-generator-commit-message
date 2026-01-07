@@ -19,7 +19,8 @@ public class AiSettingsState implements PersistentStateComponent<AiSettingsState
 
     public enum Provider {
         OLLAMA,
-        OPENAI
+        OPENAI,
+        OPENROUTER
     }
 
     public Provider provider = Provider.OLLAMA;

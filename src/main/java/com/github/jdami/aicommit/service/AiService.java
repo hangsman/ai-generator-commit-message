@@ -3,6 +3,7 @@ package com.github.jdami.aicommit.service;
 import com.github.jdami.aicommit.service.model.GenerationInputs;
 import com.github.jdami.aicommit.service.provider.OllamaProviderClient;
 import com.github.jdami.aicommit.service.provider.OpenAiProviderClient;
+import com.github.jdami.aicommit.service.provider.OpenRouterProviderClient;
 import com.github.jdami.aicommit.service.util.PromptBuilder;
 import com.github.jdami.aicommit.settings.AiSettingsState;
 import com.intellij.openapi.progress.ProgressIndicator;
@@ -18,6 +19,7 @@ public class AiService {
 
     private final AiProviderClient ollamaClient = new OllamaProviderClient();
     private final AiProviderClient openAiClient = new OpenAiProviderClient();
+    private final AiProviderClient openRouterClient = new OpenRouterProviderClient();
     private volatile AiProviderClient activeClient;
     private final Object lock = new Object();
 
@@ -52,6 +54,8 @@ public class AiService {
     private AiProviderClient selectProvider(AiSettingsState settings) {
         if (settings.provider == AiSettingsState.Provider.OPENAI) {
             return openAiClient;
+        } else if (settings.provider == AiSettingsState.Provider.OPENROUTER) {
+            return openRouterClient;
         }
         return ollamaClient;
     }
@@ -64,6 +68,15 @@ public class AiService {
                     settings.providers.openAi.endpoint,
                     settings.providers.openAi.model,
                     settings.providers.openAi.apiKey,
+                    settings.timeout
+            );
+        } else if (settings.provider == AiSettingsState.Provider.OPENROUTER) {
+            return new GenerationInputs(
+                    prompt,
+                    settings.systemPrompt,
+                    settings.providers.openRouter.endpoint,
+                    settings.providers.openRouter.model,
+                    settings.providers.openRouter.apiKey,
                     settings.timeout
             );
         }
