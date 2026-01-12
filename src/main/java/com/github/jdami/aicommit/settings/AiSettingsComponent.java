@@ -45,12 +45,29 @@ public class AiSettingsComponent {
         providerCards.add(buildOpenAiPanel(), Provider.OPENAI.name());
         providerCards.add(buildOpenRouterPanel(), Provider.OPENROUTER.name());
 
+        // Create release link panel
+        JPanel linkPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        JLabel linkLabel = new JLabel("<html>插件发布地址: <a href='https://linux.do/t/topic/1415731/65'>LINUX.DO</a></html>");
+        linkLabel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        linkLabel.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent e) {
+                try {
+                    Desktop.getDesktop().browse(new java.net.URI("https://linux.do/t/topic/1415731/65"));
+                } catch (Exception ex) {
+                    Messages.showErrorDialog("无法打开链接: " + ex.getMessage(), "错误");
+                }
+            }
+        });
+        linkPanel.add(linkLabel);
+
         mainPanel = FormBuilder.createFormBuilder()
                 .addLabeledComponent(new JBLabel("Provider: "), providerCombo, 1, false)
                 .addComponent(providerCards)
                 .addLabeledComponent(new JBLabel("Timeout (seconds): "), timeoutSpinner, 1, false)
                 .addLabeledComponent(new JBLabel("System Prompt: "), scrollPane, 1, false)
                 .addComponentFillVertically(new JPanel(), 0)
+                .addComponent(linkPanel)
                 .getPanel();
 
         mainPanel.setBorder(JBUI.Borders.empty(10));

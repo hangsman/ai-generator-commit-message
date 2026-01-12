@@ -179,6 +179,28 @@ src/main/java/com/github/jdami/aicommit/
 
 The built plugin will be in `build/distributions/`.
 
+#### Create Release
+
+The project uses GitHub Actions to automatically build and release the plugin.
+
+**Method 1: Manual Trigger**
+1. Go to GitHub repository → Actions → Release Plugin
+2. Click "Run workflow"
+3. Enter version number (e.g., `1.0.3`)
+4. Click "Run workflow"
+
+**Method 2: Git Tag**
+```bash
+git tag v1.0.3
+git push origin v1.0.3
+```
+
+The workflow will:
+- Build the plugin
+- Create a GitHub Release
+- Upload the plugin ZIP file
+- Include installation instructions
+
 ### 🔧 Troubleshooting
 
 **"No diff content found" error:**
@@ -394,6 +416,28 @@ src/main/java/com/github/jdami/aicommit/
 ```
 
 生成的插件位于 `build/distributions/` 目录。
+
+#### 创建发布版本
+
+项目使用 GitHub Actions 自动构建和发布插件。
+
+**方法 1：手动触发**
+1. 进入 GitHub 仓库 → Actions → Release Plugin
+2. 点击 "Run workflow"
+3. 输入版本号（如 `1.0.3`）
+4. 点击 "Run workflow"
+
+**方法 2：Git 标签**
+```bash
+git tag v1.0.3
+git push origin v1.0.3
+```
+
+工作流将：
+- 构建插件
+- 创建 GitHub Release
+- 上传插件 ZIP 文件
+- 包含安装说明
 
 ### 🔧 故障排除
 
