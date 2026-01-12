@@ -11,7 +11,7 @@ public final class PromptBuilder {
     }
 
     public static String buildPrompt(@NotNull String diffContent) {
-        return "请分析以下 Git Diff 并生成专业的 commit message。\n\n" +
+        return "请分析以下代码变更（Diff）并生成专业的 commit message。\n\n" +
                 "## 分析步骤\n\n" +
                 "1. **识别变更类型**\n" +
                 "   - 检查是否有新增文件（new file mode）→ 可能是 feat\n" +
@@ -31,7 +31,7 @@ public final class PromptBuilder {
                 "   - 空一行\n" +
                 "   - 详细变更点：2-5 个要点，每行一个，使用 `-` 开头\n\n" +
                 "---\n\n" +
-                "## Git Diff 内容\n\n" +
+                "## 代码变更内容\n\n" +
                 "```diff\n" +
                 diffContent + "\n" +
                 "```\n\n" +

@@ -7,21 +7,23 @@
 
     <description><![CDATA[
     <h1>AI Commit Message Generator</h1>
-    <p>Automatically generate commit messages using Ollama or OpenAI based on your code changes.</p>
+    <p>Automatically generate commit messages using AI based on your code changes.</p>
+    <p><strong>Works with any VCS:</strong> Git, SVN, Mercurial, Perforce, and more!</p>
     
     <h2>Features</h2>
     <ul>
         <li>Add a button in the commit dialog to generate commit messages</li>
         <li>Analyze staged changes and generate meaningful commit messages</li>
-        <li>Customizable Ollama/OpenAI endpoints, models, and (for OpenAI) API Key</li>
-        <li>Provider switch in Settings for different model vendors</li>
+        <li>Customizable AI provider: Ollama, OpenAI, or OpenRouter</li>
+        <li>VCS-agnostic: works with Git, SVN, Mercurial, and any VCS supported by IntelliJ</li>
+        <li>Cross-platform: Windows, macOS, Linux</li>
     </ul>
     
     <h2>Usage</h2>
     <ol>
-        <li>Configure Ollama endpoint in Settings → Tools → AI Commit Message Generator</li>
+        <li>Configure AI provider in Settings → Tools → AI Commit Message Generator</li>
         <li>Open the commit dialog (Ctrl+K / Cmd+K)</li>
-        <li>Click the "Generate Commit Message" button</li>
+        <li>Click the "Commit助手" button</li>
         <li>Review and edit the generated message</li>
     </ol>
     ]]></description>
@@ -38,7 +40,7 @@
     <!-- Product and plugin compatibility requirements -->
     <depends>com.intellij.modules.platform</depends>
     <depends>com.intellij.modules.vcs</depends>
-    <depends>Git4Idea</depends>
+    <!-- Removed Git4Idea dependency - plugin now works with any VCS (Git, SVN, Mercurial, etc.) -->
 
     <extensions defaultExtensionNs="com.intellij">
         <!-- Settings -->

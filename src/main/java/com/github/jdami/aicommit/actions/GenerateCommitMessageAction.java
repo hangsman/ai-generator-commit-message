@@ -1,6 +1,7 @@
 package com.github.jdami.aicommit.actions;
 
 import com.github.jdami.aicommit.service.AiService;
+import com.github.jdami.aicommit.util.UnifiedDiffGenerator;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.application.ApplicationManager;
@@ -14,11 +15,11 @@ import com.intellij.openapi.util.IconLoader;
 import com.intellij.openapi.vcs.CheckinProjectPanel;
 import com.intellij.openapi.vcs.CommitMessageI;
 import com.intellij.openapi.vcs.FilePath;
+import com.intellij.openapi.vcs.VcsException;
 import com.intellij.openapi.vcs.changes.Change;
 import com.intellij.openapi.vcs.ui.Refreshable;
+import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.vcsUtil.VcsUtil;
-import git4idea.GitUtil;
-import git4idea.repo.GitRepository;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
@@ -29,7 +30,8 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * Action to generate commit message using Ollama AI
+ * Action to generate commit message using AI.
+ * This action is VCS-agnostic and works with Git, SVN, Mercurial, etc.
  */
 public class GenerateCommitMessageAction extends AnAction {
 
@@ -71,15 +73,27 @@ public class GenerateCommitMessageAction extends AnAction {
         // Get the changes to be committed
         Collection<Change> changes = checkinPanel.getSelectedChanges();
         
-        // Also get unversioned files (new files not yet added to git)
-        List<FilePath> unversionedFiles = checkinPanel.getVirtualFiles().stream()
+        // Get unversioned files selected for commit (new files not yet added to VCS)
+        // Use FileStatusManager to check file status (compatible with all IntelliJ versions)
+        com.intellij.openapi.vcs.FileStatusManager fileStatusManager = 
+            com.intellij.openapi.vcs.FileStatusManager.getInstance(project);
+        
+        // Get all selected files and filter for unversioned ones
+        Collection<VirtualFile> selectedVirtualFiles = checkinPanel.getVirtualFiles();
+        List<FilePath> unversionedFiles = selectedVirtualFiles.stream()
             .filter(vf -> {
-                // Check if this file is not already in the changes collection
+                // Check if file is unversioned (not in any change and has UNKNOWN status)
+                com.intellij.openapi.vcs.FileStatus status = fileStatusManager.getStatus(vf);
+                boolean isUnversioned = status == com.intellij.openapi.vcs.FileStatus.UNKNOWN;
+                
+                // Also check it's not already in the changes collection
                 String vfPath = vf.getPath();
-                return changes.stream().noneMatch(c -> 
+                boolean notInChanges = changes.stream().noneMatch(c ->
                     (c.getAfterRevision() != null && c.getAfterRevision().getFile().getPath().equals(vfPath)) ||
                     (c.getBeforeRevision() != null && c.getBeforeRevision().getFile().getPath().equals(vfPath))
                 );
+                
+                return isUnversioned && notInChanges;
             })
             .map(VcsUtil::getFilePath)
             .collect(Collectors.toList());
@@ -152,226 +166,89 @@ public class GenerateCommitMessageAction extends AnAction {
     }
 
     /**
-     * Normalize path for git diff format (always use forward slashes)
-     * This ensures Windows paths work correctly in git diffs
-     */
-    private String normalizePathForGit(String path) {
-        // Replace backslashes with forward slashes for Windows compatibility
-        return path.replace('\\', '/');
-    }
-
-    /**
-     * Get diff content from changes using git diff command
+     * Get diff content from changes using VCS-agnostic API.
+     * This works with Git, SVN, Mercurial, and any other VCS supported by IntelliJ.
      */
     private String getDiffContent(Project project, Collection<Change> changes, List<FilePath> unversionedFiles) {
-        try {
-            GitRepository repository = GitUtil.getRepositoryManager(project).getRepositories().stream()
-                    .findFirst()
-                    .orElse(null);
+        StringBuilder diffBuilder = new StringBuilder();
 
-            if (repository == null) {
-                System.err.println("No Git repository found");
-                return null;
-            }
-
-            String repoPath = repository.getRoot().getPath();
-            StringBuilder diffBuilder = new StringBuilder();
-
-            // Use git diff to get actual diff content
-            for (Change change : changes) {
-                String absolutePath = null;
-                boolean isNewFile = change.getBeforeRevision() == null;
-                boolean isDeletedFile = change.getAfterRevision() == null;
-
-                if (change.getAfterRevision() != null) {
-                    absolutePath = change.getAfterRevision().getFile().getPath();
-                } else if (change.getBeforeRevision() != null) {
-                    absolutePath = change.getBeforeRevision().getFile().getPath();
+        // Process versioned changes using ContentRevision API (VCS-agnostic)
+        for (Change change : changes) {
+            try {
+                String diff = UnifiedDiffGenerator.generateDiff(change, project);
+                if (!diff.isEmpty()) {
+                    diffBuilder.append(diff);
+                    System.out.println("Successfully generated diff for change");
                 }
-
-                if (absolutePath != null) {
-                    // Convert to relative path
-                    String relativePath = absolutePath;
-                    if (absolutePath.startsWith(repoPath)) {
-                        relativePath = absolutePath.substring(repoPath.length());
-                        if (relativePath.startsWith("/") || relativePath.startsWith("\\")) {
-                            relativePath = relativePath.substring(1);
-                        }
-                    }
-                    
-                    // Normalize path for git (convert backslashes to forward slashes for Windows)
-                    relativePath = normalizePathForGit(relativePath);
-
-                    String changeType = isNewFile ? "NEW" : (isDeletedFile ? "DELETED" : "MODIFIED");
-                    System.out.println("Processing file: " + relativePath + " [" + changeType + "]");
-
-                    try {
-                        String fileDiff = null;
-
-                        if (isNewFile) {
-                            // For new files, try different strategies
-                            // Try 1: Staged new file
-                            fileDiff = executeGitDiff(repoPath, "diff", "--cached", "HEAD", "--", relativePath);
-                            
-                            // Try 2: If not staged, check if it's added to index
-                            if (fileDiff.isEmpty()) {
-                                fileDiff = executeGitDiff(repoPath, "diff", "--cached", "--", relativePath);
-                            }
-                            
-                            // Try 3: For completely new untracked files, show the content as added
-                            if (fileDiff.isEmpty()) {
-                                // Check if file exists and show it as new content
-                                String showContent = executeGitDiff(repoPath, "show", ":" + relativePath);
-                                if (!showContent.isEmpty()) {
-                                    // Split on both Unix and Windows line endings
-                                    String[] showLines = showContent.split("\\r?\\n");
-                                    // Format as diff
-                                    fileDiff = "diff --git a/" + relativePath + " b/" + relativePath + "\n" +
-                                              "new file mode 100644\n" +
-                                              "--- /dev/null\n" +
-                                              "+++ b/" + relativePath + "\n" +
-                                              "@@ -0,0 +1," + showLines.length + " @@\n";
-                                    for (String line : showLines) {
-                                        fileDiff += "+" + line + "\n";
-                                    }
-                                }
-                            }
-                        } else if (isDeletedFile) {
-                            // For deleted files
-                            fileDiff = executeGitDiff(repoPath, "diff", "--cached", "--", relativePath);
-                            
-                            if (fileDiff.isEmpty()) {
-                                fileDiff = executeGitDiff(repoPath, "diff", "HEAD", "--", relativePath);
-                            }
-                        } else {
-                            // For modified files
-                            // Try 1: Staged changes (git diff --cached)
-                            fileDiff = executeGitDiff(repoPath, "diff", "--cached", "--", relativePath);
-
-                            // Try 2: Unstaged changes (git diff)
-                            if (fileDiff.isEmpty()) {
-                                fileDiff = executeGitDiff(repoPath, "diff", "--", relativePath);
-                            }
-
-                            // Try 3: Compare with HEAD
-                            if (fileDiff.isEmpty()) {
-                                fileDiff = executeGitDiff(repoPath, "diff", "HEAD", "--", relativePath);
-                            }
-                        }
-
-                        if (!fileDiff.isEmpty()) {
-                            diffBuilder.append(fileDiff);
-                            System.out.println("Successfully got diff for: " + relativePath + " (" + fileDiff.length() + " chars)");
-                        } else {
-                            System.err.println("No diff found for file: " + relativePath + " [" + changeType + "]");
-                        }
-                    } catch (Exception e) {
-                        System.err.println("Error getting diff for file " + relativePath + ": " + e.getMessage());
-                        e.printStackTrace();
-                    }
-                }
+            } catch (VcsException e) {
+                System.err.println("Error generating diff: " + e.getMessage());
+                e.printStackTrace();
             }
-
-            // Process unversioned files (new files not yet added to git)
-            for (FilePath filePath : unversionedFiles) {
-                try {
-                    String absolutePath = filePath.getPath();
-                    String relativePath = absolutePath;
-                    
-                    if (absolutePath.startsWith(repoPath)) {
-                        relativePath = absolutePath.substring(repoPath.length());
-                        if (relativePath.startsWith("/") || relativePath.startsWith("\\")) {
-                            relativePath = relativePath.substring(1);
-                        }
-                    }
-                    
-                    // Normalize path for git (convert backslashes to forward slashes for Windows)
-                    relativePath = normalizePathForGit(relativePath);
-                    
-                    System.out.println("Processing unversioned file: " + relativePath);
-                    
-                    // Read file content directly from filesystem
-                    File file = new File(absolutePath);
-                    if (file.exists() && file.isFile()) {
-                        // Read with explicit UTF-8 encoding for cross-platform compatibility
-                        String content = Files.readString(file.toPath(), StandardCharsets.UTF_8);
-                        // Split on both Unix (\n) and Windows (\r\n) line endings
-                        String[] lines = content.split("\\r?\\n", -1); // -1 to preserve trailing empty strings
-                        
-                        // Format as diff (all lines are additions)
-                        StringBuilder fileDiff = new StringBuilder();
-                        fileDiff.append("diff --git a/").append(relativePath).append(" b/").append(relativePath).append("\n");
-                        fileDiff.append("new file mode 100644\n");
-                        fileDiff.append("--- /dev/null\n");
-                        fileDiff.append("+++ b/").append(relativePath).append("\n");
-                        fileDiff.append("@@ -0,0 +1,").append(lines.length).append(" @@\n");
-                        
-                        for (String line : lines) {
-                            fileDiff.append("+").append(line).append("\n");
-                        }
-                        
-                        diffBuilder.append(fileDiff);
-                        System.out.println("Successfully got diff for unversioned file: " + relativePath + " (" + fileDiff.length() + " chars)");
-                    } else {
-                        System.err.println("Unversioned file not found or not a file: " + absolutePath);
-                    }
-                } catch (Exception e) {
-                    System.err.println("Error reading unversioned file " + filePath.getPath() + ": " + e.getMessage());
-                    e.printStackTrace();
-                }
-            }
-
-            String finalDiff = diffBuilder.toString();
-            System.out.println("=== Git Diff Content ===");
-            System.out.println("Diff length: " + finalDiff.length() + " characters");
-            System.out.println(finalDiff);
-            System.out.println("========================");
-
-            return finalDiff.isEmpty() ? null : finalDiff;
-        } catch (Exception e) {
-            System.err.println("Error getting diff content: " + e.getMessage());
-            e.printStackTrace();
-            return "Unable to get diff content: " + e.getMessage();
         }
+
+        // Process unversioned files (new files not yet added to VCS)
+        for (FilePath filePath : unversionedFiles) {
+            try {
+                String diff = generateDiffForUnversionedFile(filePath);
+                if (!diff.isEmpty()) {
+                    diffBuilder.append(diff);
+                    System.out.println("Successfully generated diff for unversioned file: " + filePath.getPath());
+                }
+            } catch (Exception e) {
+                System.err.println("Error reading unversioned file " + filePath.getPath() + ": " + e.getMessage());
+                e.printStackTrace();
+            }
+        }
+
+        String finalDiff = diffBuilder.toString();
+        System.out.println("=== Diff Content ===");
+        System.out.println("Diff length: " + finalDiff.length() + " characters");
+        System.out.println(finalDiff);
+        System.out.println("====================");
+
+        return finalDiff.isEmpty() ? null : finalDiff;
     }
 
     /**
-     * Execute git diff command and return output
+     * Generate unified diff for an unversioned file
      */
-    private String executeGitDiff(String repoPath, String... args) throws Exception {
-        ProcessBuilder processBuilder = new ProcessBuilder();
-        processBuilder.command(args);
-        processBuilder.directory(new java.io.File(repoPath));
-        processBuilder.redirectErrorStream(true);
+    private String generateDiffForUnversionedFile(FilePath filePath) throws Exception {
+        String absolutePath = filePath.getPath();
+        String relativePath = normalizePathForDiff(absolutePath);
 
-        // Prepend "git" to the command
-        java.util.List<String> command = new java.util.ArrayList<>();
-        command.add("git");
-        command.addAll(java.util.Arrays.asList(args));
-        processBuilder.command(command);
-
-        System.out.println("Executing: " + String.join(" ", command));
-
-        Process process = processBuilder.start();
-        // Read git command output with explicit UTF-8 encoding for cross-platform compatibility
-        java.io.BufferedReader reader = new java.io.BufferedReader(
-                new java.io.InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8));
-
-        StringBuilder output = new StringBuilder();
-        String line;
-        while ((line = reader.readLine()) != null) {
-            output.append(line).append("\n");
-        }
-
-        int exitCode = process.waitFor();
-        System.out.println("Exit code: " + exitCode + ", Output length: " + output.length());
-
-        if (exitCode != 0) {
-            System.err.println("Git command failed: " + output.toString());
+        // Read file content directly from filesystem
+        File file = new File(absolutePath);
+        if (!file.exists() || !file.isFile()) {
+            System.err.println("Unversioned file not found or not a file: " + absolutePath);
             return "";
         }
 
-        return output.toString();
+        // Read with explicit UTF-8 encoding for cross-platform compatibility
+        String content = Files.readString(file.toPath(), StandardCharsets.UTF_8);
+        // Split on both Unix (\n) and Windows (\r\n) line endings
+        String[] lines = content.split("\\r?\\n", -1);
+
+        // Format as unified diff (all lines are additions)
+        StringBuilder diff = new StringBuilder();
+        diff.append("diff --git a/").append(relativePath).append(" b/").append(relativePath).append("\n");
+        diff.append("new file mode 100644\n");
+        diff.append("--- /dev/null\n");
+        diff.append("+++ b/").append(relativePath).append("\n");
+        diff.append("@@ -0,0 +1,").append(lines.length).append(" @@\n");
+
+        for (String line : lines) {
+            diff.append("+").append(line).append("\n");
+        }
+
+        return diff.toString();
+    }
+
+    /**
+     * Normalize path for diff format (always use forward slashes)
+     */
+    private String normalizePathForDiff(String path) {
+        // Replace backslashes with forward slashes for Windows compatibility
+        return path.replace('\\', '/');
     }
 
     @Override
@@ -381,8 +258,8 @@ public class GenerateCommitMessageAction extends AnAction {
         e.getPresentation().setIcon(IconLoader.getIcon(
                 isGenerating ? "/icons/aiCommitStop.svg" : "/icons/aiCommit.svg",
                 GenerateCommitMessageAction.class));
-        e.getPresentation().setText(isGenerating ? "停止生成" : "Git助手");
-        e.getPresentation().setDescription(isGenerating ? "停止生成 commit message" : "Generate commit message using AI");
+        e.getPresentation().setText(isGenerating ? "停止生成" : "Commit助手");
+        e.getPresentation().setDescription(isGenerating ? "停止生成 commit message" : "使用AI生成 commit message");
     }
 
     private void markGenerating(ProgressIndicator indicator) {

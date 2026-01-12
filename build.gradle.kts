@@ -21,9 +21,8 @@ intellij {
     version.set("2023.2.5")
     type.set("IC") // Target IDE Platform: IC = IntelliJ IDEA Community Edition
     
-    plugins.set(listOf(
-        "Git4Idea" // Required for VCS integration
-    ))
+    // No specific VCS plugins required - works with any VCS through IntelliJ's VCS API
+    plugins.set(listOf())
 }
 
 tasks {

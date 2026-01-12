@@ -1,7 +1,7 @@
 .gradle
 .idea
 build
-.bin/
+.bin
 out
 *.iml
 *.ipr

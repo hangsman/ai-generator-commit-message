@@ -1,0 +1,53 @@
+name: Release Plugin
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version'
+        required: true
+        type: string
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+      
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+      
+      - name: Build plugin
+        run: ./gradlew buildPlugin
+      
+      - name: Get version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: Release ${{ steps.version.outputs.version }}
+          files: build/distributions/*.zip
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
