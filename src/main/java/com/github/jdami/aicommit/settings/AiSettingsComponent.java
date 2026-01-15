@@ -36,14 +36,35 @@ public class AiSettingsComponent {
     private final JSpinner timeoutSpinner = new JSpinner(new SpinnerNumberModel(30, 5, 300, 5));
     private final JTextArea systemPromptArea = new JTextArea(5, 40);
 
+    private JBLabel createLabel(String text) {
+        JBLabel label = new JBLabel(text);
+        // Set a consistent width to ensure alignment across different FormBuilders
+        // We must use the label's natural height, passing -1 is invalid for Dimension
+        Dimension naturalSize = label.getPreferredSize();
+        label.setPreferredSize(new Dimension(JBUI.scale(120), naturalSize.height));
+        return label;
+    }
+
     public AiSettingsComponent() {
         systemPromptArea.setLineWrap(true);
         systemPromptArea.setWrapStyleWord(true);
-        JScrollPane scrollPane = new JScrollPane(systemPromptArea);
+        JScrollPane scrollPane = new com.intellij.ui.components.JBScrollPane(systemPromptArea);
 
         providerCards.add(buildOllamaPanel(), Provider.OLLAMA.name());
         providerCards.add(buildOpenAiPanel(), Provider.OPENAI.name());
         providerCards.add(buildOpenRouterPanel(), Provider.OPENROUTER.name());
+
+        // Action Panel: Spinner + Test Button
+        // We use a panel to hold them together
+        JPanel timeoutAndTestPanel = new JPanel(new BorderLayout());
+        JPanel spinnerPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        spinnerPanel.add(timeoutSpinner);
+        
+        JButton testButton = new JButton("Test Connection");
+        testButton.addActionListener(e -> testConnection(getProvider())); // Dynamically get current provider
+
+        timeoutAndTestPanel.add(spinnerPanel, BorderLayout.WEST);
+        timeoutAndTestPanel.add(testButton, BorderLayout.EAST);
 
         // Create release link panel
         JPanel linkPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
@@ -62,10 +83,14 @@ public class AiSettingsComponent {
         linkPanel.add(linkLabel);
 
         mainPanel = FormBuilder.createFormBuilder()
-                .addLabeledComponent(new JBLabel("Provider: "), providerCombo, 1, false)
+                .addLabeledComponent(createLabel("AI Provider: "), providerCombo, 1, false)
+                .addVerticalGap(5)
+                .addComponent(new com.intellij.ui.TitledSeparator("Provider Settings"))
                 .addComponent(providerCards)
-                .addLabeledComponent(new JBLabel("Timeout (seconds): "), timeoutSpinner, 1, false)
-                .addLabeledComponent(new JBLabel("System Prompt: "), scrollPane, 1, false)
+                .addLabeledComponent(createLabel("Timeout(s): "), timeoutAndTestPanel, 1, false)
+                .addVerticalGap(5)
+                .addComponent(new com.intellij.ui.TitledSeparator("Generation Parameters"))
+                .addLabeledComponent(createLabel("System Prompt: "), scrollPane, 1, false)
                 .addComponentFillVertically(new JPanel(), 0)
                 .addComponent(linkPanel)
                 .getPanel();
@@ -75,38 +100,57 @@ public class AiSettingsComponent {
         providerCombo.addActionListener(e -> switchProviderCard());
     }
 
-    private JPanel buildOllamaPanel() {
-        JButton testButton = new JButton("Test Connection");
-        testButton.addActionListener(e -> testConnection(Provider.OLLAMA));
+    private JPanel createApiKeyPanel(JBPasswordField apiKeyField) {
+        // Fix Expansion: Set columns to limit preferred width
+        apiKeyField.setColumns(30);
         
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.add(apiKeyField, BorderLayout.CENTER);
+        
+        JCheckBox showPassword = new JCheckBox("Show");
+        showPassword.addActionListener(e -> {
+            char echoChar = showPassword.isSelected() ? 0 : '•';
+            apiKeyField.setEchoChar(echoChar);
+        });
+        panel.add(showPassword, BorderLayout.EAST);
+        return panel;
+    }
+
+    private JPanel buildOllamaPanel() {
+        JBLabel hintLabel = new JBLabel("提示: 如果 URL 以 # 结尾，将直接使用该地址作为完整请求 URL (不拼接 /api/generate)");
+        hintLabel.setForeground(JBUI.CurrentTheme.ContextHelp.FOREGROUND);
+        hintLabel.setFont(JBUI.Fonts.smallFont());
+
         return FormBuilder.createFormBuilder()
-                .addLabeledComponent(new JBLabel("Ollama Endpoint: "), ollamaEndpointField, 1, false)
-                .addLabeledComponent(new JBLabel("Ollama Model: "), ollamaModelField, 1, false)
-                .addLabeledComponent(new JBLabel(""), testButton, 1, false)
+                .addLabeledComponent(createLabel("Endpoint URL: "), ollamaEndpointField, 1, false)
+                .addComponentToRightColumn(hintLabel)
+                .addLabeledComponent(createLabel("Model Name: "), ollamaModelField, 1, false)
                 .getPanel();
     }
 
     private JPanel buildOpenAiPanel() {
-        JButton testButton = new JButton("Test Connection");
-        testButton.addActionListener(e -> testConnection(Provider.OPENAI));
-        
+        JBLabel hintLabel = new JBLabel("提示: 如果 URL 以 # 结尾，将直接使用该地址作为完整请求 URL (不拼接 /v1/chat/completions)");
+        hintLabel.setForeground(JBUI.CurrentTheme.ContextHelp.FOREGROUND);
+        hintLabel.setFont(JBUI.Fonts.smallFont());
+
         return FormBuilder.createFormBuilder()
-                .addLabeledComponent(new JBLabel("OpenAI API Base: "), openAiEndpointField, 1, false)
-                .addLabeledComponent(new JBLabel("OpenAI Model: "), openAiModelField, 1, false)
-                .addLabeledComponent(new JBLabel("OpenAI API Key: "), openAiApiKeyField, 1, false)
-                .addLabeledComponent(new JBLabel(""), testButton, 1, false)
+                .addLabeledComponent(createLabel("Endpoint URL: "), openAiEndpointField, 1, false)
+                .addComponentToRightColumn(hintLabel)
+                .addLabeledComponent(createLabel("Model Name: "), openAiModelField, 1, false)
+                .addLabeledComponent(createLabel("API Key: "), createApiKeyPanel(openAiApiKeyField), 1, false)
                 .getPanel();
     }
 
     private JPanel buildOpenRouterPanel() {
-        JButton testButton = new JButton("Test Connection");
-        testButton.addActionListener(e -> testConnection(Provider.OPENROUTER));
-        
+        JBLabel hintLabel = new JBLabel("提示: 如果 URL 以 # 结尾，将直接使用该地址作为完整请求 URL (不拼接 /v1/chat/completions)");
+        hintLabel.setForeground(JBUI.CurrentTheme.ContextHelp.FOREGROUND);
+        hintLabel.setFont(JBUI.Fonts.smallFont());
+
         return FormBuilder.createFormBuilder()
-                .addLabeledComponent(new JBLabel("OpenRouter API Base: "), openRouterEndpointField, 1, false)
-                .addLabeledComponent(new JBLabel("OpenRouter Model: "), openRouterModelField, 1, false)
-                .addLabeledComponent(new JBLabel("OpenRouter API Key: "), openRouterApiKeyField, 1, false)
-                .addLabeledComponent(new JBLabel(""), testButton, 1, false)
+                .addLabeledComponent(createLabel("Endpoint URL: "), openRouterEndpointField, 1, false)
+                .addComponentToRightColumn(hintLabel)
+                .addLabeledComponent(createLabel("Model Name: "), openRouterModelField, 1, false)
+                .addLabeledComponent(createLabel("API Key: "), createApiKeyPanel(openRouterApiKeyField), 1, false)
                 .getPanel();
     }
 

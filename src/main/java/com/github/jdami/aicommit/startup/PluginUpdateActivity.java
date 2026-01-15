@@ -40,11 +40,9 @@ public class PluginUpdateActivity implements StartupActivity, ProjectActivity {
         String currentVersion = plugin.getVersion();
         AiSettingsState settings = AiSettingsState.getInstance();
 
-        // If version changed or not set, reset settings to defaults
+        // If version changed or not set, update version but keep settings
         if (!currentVersion.equals(settings.pluginVersion)) {
-            System.out.println("Plugin updated from " + settings.pluginVersion + " to " + currentVersion
-                    + ". Resetting settings.");
-            settings.resetToDefaults();
+            System.out.println("Plugin updated from " + settings.pluginVersion + " to " + currentVersion);
             settings.pluginVersion = currentVersion;
         }
     }

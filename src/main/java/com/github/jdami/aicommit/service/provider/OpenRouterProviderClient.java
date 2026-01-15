@@ -38,7 +38,12 @@ public class OpenRouterProviderClient extends BaseHttpProviderClient {
         requestBody.add("messages", messages);
         requestBody.addProperty("stream", false);
 
-        String url = normalizeBaseUrl(inputs.endpoint) + "/v1/chat/completions";
+        String url;
+        if (inputs.endpoint.endsWith("#")) {
+            url = inputs.endpoint.substring(0, inputs.endpoint.length() - 1);
+        } else {
+            url = normalizeBaseUrl(inputs.endpoint) + "/v1/chat/completions";
+        }
         String jsonBody = gson.toJson(requestBody);
 
         System.out.println("=== OpenRouter Request ===");

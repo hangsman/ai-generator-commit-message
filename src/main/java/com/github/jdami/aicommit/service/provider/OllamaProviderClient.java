@@ -28,7 +28,12 @@ public class OllamaProviderClient extends BaseHttpProviderClient {
 
         String jsonBody = gson.toJson(requestBody);
 
-        String url = normalizeBaseUrl(inputs.endpoint) + "/api/generate";
+        String url;
+        if (inputs.endpoint.endsWith("#")) {
+            url = inputs.endpoint.substring(0, inputs.endpoint.length() - 1);
+        } else {
+            url = normalizeBaseUrl(inputs.endpoint) + "/api/generate";
+        }
         System.out.println("=== Ollama Request ===");
         System.out.println("Endpoint: " + url);
         System.out.println("Model: " + inputs.model);
