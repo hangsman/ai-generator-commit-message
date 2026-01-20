@@ -11,6 +11,20 @@ public final class PromptBuilder {
     }
 
     public static String buildPrompt(@NotNull String diffContent) {
+        // First try to compress by removing context lines if oversized
+        String compressedDiff = DiffCompressor.compress(diffContent);
+        
+        // Then apply truncation if still too large (to prevent AI model 400 errors)
+        String processedDiff = DiffTruncator.truncate(compressedDiff);
+        
+        // Log truncation statistics
+        if (processedDiff.length() != diffContent.length()) {
+            System.out.println("=== Diff Truncation Applied ===");
+            System.out.println("Original: " + DiffTruncator.getStats(diffContent));
+            System.out.println("Truncated to: " + DiffTruncator.getStats(processedDiff));
+            System.out.println("================================");
+        }
+        
         return "请分析以下代码变更（Diff）并生成专业的 commit message。\n\n" +
                 "## 分析步骤\n\n" +
                 "1. **识别变更类型**\n" +
@@ -33,9 +47,10 @@ public final class PromptBuilder {
                 "---\n\n" +
                 "## 代码变更内容\n\n" +
                 "```diff\n" +
-                diffContent + "\n" +
+                processedDiff + "\n" +
                 "```\n\n" +
                 "---\n\n" +
                 "现在请直接输出 commit message（不要任何解释或前缀）：";
     }
 }
+

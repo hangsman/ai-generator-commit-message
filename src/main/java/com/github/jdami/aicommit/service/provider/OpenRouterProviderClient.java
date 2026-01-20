@@ -72,13 +72,51 @@ public class OpenRouterProviderClient extends BaseHttpProviderClient {
             try (Response response = call.execute()) {
                 checkCanceled(indicator);
 
+                String responseBody = response.body() != null ? response.body().string() : "";
+                
                 if (!response.isSuccessful()) {
-                    String errorMsg = "Unexpected response code: " + response;
-                    System.err.println("OpenRouter Error: " + errorMsg);
-                    throw new IOException(errorMsg);
+                    System.err.println("=== OpenRouter Error Response ===");
+                    System.err.println("HTTP Status: " + response.code() + " " + response.message());
+                    System.err.println("Response Body: " + responseBody);
+                    System.err.println("Request Body Size: " + jsonBody.length() + " chars");
+                    System.err.println("=================================");
+                    
+                    // Try to extract error message from response
+                    String errorDetail = "未知错误";
+                    String suggestion = "";
+                    try {
+                        var errorJson = gson.fromJson(responseBody, com.google.gson.JsonObject.class);
+                        if (errorJson.has("error")) {
+                            var error = errorJson.getAsJsonObject("error");
+                            String mainMessage = error.has("message") ? error.get("message").getAsString() : "";
+                            
+                            // Try to extract nested error from metadata.raw
+                            if (error.has("metadata") && error.getAsJsonObject("metadata").has("raw")) {
+                                String rawError = error.getAsJsonObject("metadata").get("raw").getAsString();
+                                try {
+                                    var rawJson = gson.fromJson(rawError, com.google.gson.JsonObject.class);
+                                    if (rawJson.has("message")) {
+                                        errorDetail = rawJson.get("message").getAsString();
+                                    }
+                                } catch (Exception e) {
+                                    errorDetail = rawError;
+                                }
+                            } else {
+                                errorDetail = mainMessage;
+                            }
+                            
+                            // Add suggestion for common errors
+                            if (errorDetail.contains("exceed") || errorDetail.contains("token") || errorDetail.contains("length")) {
+                                suggestion = "\n\n💡 建议：请在设置中选择更小的\"上下文窗口\"预设，或减少提交的文件数量。";
+                            }
+                        }
+                    } catch (Exception ignored) {
+                        errorDetail = responseBody.length() > 200 ? responseBody.substring(0, 200) + "..." : responseBody;
+                    }
+                    
+                    throw new IOException("API 错误 (" + response.code() + "): " + errorDetail + suggestion);
                 }
 
-                String responseBody = response.body().string();
                 System.out.println("=== OpenRouter Response ===");
                 System.out.println("Raw Response: " + responseBody);
 

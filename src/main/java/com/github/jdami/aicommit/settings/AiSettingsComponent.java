@@ -1,5 +1,6 @@
 package com.github.jdami.aicommit.settings;
 
+import com.github.jdami.aicommit.settings.AiSettingsState.ContextWindowPreset;
 import com.github.jdami.aicommit.service.model.GenerationInputs;
 import com.github.jdami.aicommit.service.provider.OllamaProviderClient;
 import com.github.jdami.aicommit.service.provider.OpenAiProviderClient;
@@ -34,6 +35,7 @@ public class AiSettingsComponent {
     private final JBTextField openRouterModelField = new JBTextField();
     private final JBPasswordField openRouterApiKeyField = new JBPasswordField();
     private final JSpinner timeoutSpinner = new JSpinner(new SpinnerNumberModel(30, 5, 300, 5));
+    private final JComboBox<ContextWindowPreset> contextWindowCombo = new JComboBox<>(ContextWindowPreset.values());
     private final JTextArea systemPromptArea = new JTextArea(5, 40);
 
     private JBLabel createLabel(String text) {
@@ -66,6 +68,11 @@ public class AiSettingsComponent {
         timeoutAndTestPanel.add(spinnerPanel, BorderLayout.WEST);
         timeoutAndTestPanel.add(testButton, BorderLayout.EAST);
 
+        // Context Window Limit Panel
+        JPanel contextWindowPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        contextWindowCombo.setSelectedItem(ContextWindowPreset.SMALL_8K); // Default
+        contextWindowPanel.add(contextWindowCombo);
+
         // Create release link panel
         JPanel linkPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
         JLabel linkLabel = new JLabel("<html>插件发布地址: <a href='https://linux.do/t/topic/1415731/65'>LINUX.DO</a></html>");
@@ -88,6 +95,9 @@ public class AiSettingsComponent {
                 .addComponent(new com.intellij.ui.TitledSeparator("Provider Settings"))
                 .addComponent(providerCards)
                 .addLabeledComponent(createLabel("Timeout(s): "), timeoutAndTestPanel, 1, false)
+                .addVerticalGap(5)
+                .addComponent(new com.intellij.ui.TitledSeparator("Content Limit Settings"))
+                .addLabeledComponent(createLabel("上下文窗口: "), contextWindowPanel, 1, false)
                 .addVerticalGap(5)
                 .addComponent(new com.intellij.ui.TitledSeparator("Generation Parameters"))
                 .addLabeledComponent(createLabel("System Prompt: "), scrollPane, 1, false)
@@ -203,6 +213,15 @@ public class AiSettingsComponent {
 
     public void setTimeout(int timeout) {
         timeoutSpinner.setValue(timeout);
+    }
+
+    public int getMaxDiffChars() {
+        ContextWindowPreset selected = (ContextWindowPreset) contextWindowCombo.getSelectedItem();
+        return selected != null ? selected.getMaxChars() : ContextWindowPreset.SMALL_8K.getMaxChars();
+    }
+
+    public void setMaxDiffChars(int maxDiffChars) {
+        contextWindowCombo.setSelectedItem(ContextWindowPreset.fromMaxChars(maxDiffChars));
     }
 
     public String getOpenAiEndpoint() {

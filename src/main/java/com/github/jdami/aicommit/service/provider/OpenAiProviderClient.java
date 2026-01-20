@@ -69,13 +69,51 @@ public class OpenAiProviderClient extends BaseHttpProviderClient {
             try (Response response = call.execute()) {
                 checkCanceled(indicator);
 
+                String responseBody = response.body() != null ? response.body().string() : "";
+                
                 if (!response.isSuccessful()) {
-                    String errorMsg = "Unexpected response code: " + response;
-                    System.err.println("OpenAI Error: " + errorMsg);
-                    throw new IOException(errorMsg);
+                    System.err.println("=== OpenAI Error Response ===");
+                    System.err.println("HTTP Status: " + response.code() + " " + response.message());
+                    System.err.println("Response Body: " + responseBody);
+                    System.err.println("Request Body Size: " + jsonBody.length() + " chars");
+                    System.err.println("==============================");
+                    
+                    // Try to extract error message from response
+                    String errorDetail = "未知错误";
+                    String suggestion = "";
+                    try {
+                        var errorJson = gson.fromJson(responseBody, com.google.gson.JsonObject.class);
+                        if (errorJson.has("error")) {
+                            var errorElement = errorJson.get("error");
+                            
+                            if (errorElement.isJsonObject()) {
+                                var errorObj = errorElement.getAsJsonObject();
+                                String msg = errorObj.has("message") ? errorObj.get("message").getAsString() : "";
+                                String code = errorObj.has("code") && !errorObj.get("code").isJsonNull() ? errorObj.get("code").getAsString() : "";
+                                String type = errorObj.has("type") && !errorObj.get("type").isJsonNull() ? errorObj.get("type").getAsString() : "";
+                                
+                                StringBuilder sb = new StringBuilder();
+                                if (!msg.isEmpty()) sb.append(msg);
+                                if (!code.isEmpty()) sb.append(" (Code: ").append(code).append(")");
+                                if (!type.isEmpty() && sb.length() == 0) sb.append(" (Type: ").append(type).append(")");
+                                
+                                errorDetail = sb.length() > 0 ? sb.toString() : errorElement.toString();
+                            } else if (errorElement.isJsonPrimitive()) {
+                                errorDetail = errorElement.getAsString();
+                            }
+                            
+                            // Add suggestion for common errors
+                            if (errorDetail.contains("exceed") || errorDetail.contains("token") || errorDetail.contains("length") || errorDetail.contains("maximum")) {
+                                suggestion = "\n\n💡 建议：请在设置中选择更小的\"上下文窗口\"预设，或减少提交的文件数量。";
+                            }
+                        }
+                    } catch (Exception ignored) {
+                        errorDetail = responseBody.length() > 200 ? responseBody.substring(0, 200) + "..." : responseBody;
+                    }
+                    
+                    throw new IOException("API 错误 (" + response.code() + "): " + errorDetail + suggestion);
                 }
 
-                String responseBody = response.body().string();
                 System.out.println("=== OpenAI Response ===");
                 System.out.println("Raw Response: " + responseBody);
 

@@ -23,6 +23,54 @@ public class AiSettingsState implements PersistentStateComponent<AiSettingsState
         OPENROUTER
     }
 
+    /**
+     * Predefined context window limits for common AI models.
+     * Values are VERY conservative to ensure request body size is within limits.
+     * Formula: target_tokens * 3.5 chars/token, then reserve 30% for overhead.
+     */
+    public enum ContextWindowPreset {
+        TINY_4K("极小模型 (4K tokens)", 10000),       // ~2.8K tokens for diff
+        SMALL_8K("小模型 (8K tokens)", 20000),        // ~5.7K tokens for diff
+        MEDIUM_16K("中等模型 (16K tokens)", 40000),   // ~11K tokens for diff
+        LARGE_32K("大模型 (32K tokens)", 80000),      // ~23K tokens for diff
+        XLARGE_128K("超大模型 (128K+ tokens)", 200000), // ~57K tokens for diff
+        UNLIMITED("不限制 (谨慎使用)", 0);
+
+        private final String displayName;
+        private final int maxChars;
+
+        ContextWindowPreset(String displayName, int maxChars) {
+            this.displayName = displayName;
+            this.maxChars = maxChars;
+        }
+
+        public String getDisplayName() {
+            return displayName;
+        }
+
+        public int getMaxChars() {
+            return maxChars;
+        }
+
+        @Override
+        public String toString() {
+            return displayName;
+        }
+
+        /**
+         * Find the preset that matches the given maxChars value.
+         * Returns SMALL_8K as default if no exact match found.
+         */
+        public static ContextWindowPreset fromMaxChars(int maxChars) {
+            for (ContextWindowPreset preset : values()) {
+                if (preset.maxChars == maxChars) {
+                    return preset;
+                }
+            }
+            return SMALL_8K; // Default - most conservative option
+        }
+    }
+
     public Provider provider = Provider.OLLAMA;
 
     public ProviderSettings providers = new ProviderSettings();
@@ -42,6 +90,13 @@ public class AiSettingsState implements PersistentStateComponent<AiSettingsState
     public String openAiModel = "gpt-4o-mini";
 
     public int timeout = 30;
+    
+    /**
+     * Maximum characters allowed for diff content.
+     * Set to 0 for unlimited (not recommended).
+     * Default: 20000 (~5.7K tokens) - safe for most models
+     */
+    public int maxDiffChars = 20000;
     public String systemPrompt = "你是一个专业的 Git Commit Message 生成器。你的任务是分析代码变更并生成高质量、结构化的提交信息。\n\n"
             +
             "## 变更类型识别规则\n\n" +

@@ -174,15 +174,10 @@ public class GenerateCommitMessageAction extends AnAction {
 
         // Process versioned changes using ContentRevision API (VCS-agnostic)
         for (Change change : changes) {
-            try {
-                String diff = UnifiedDiffGenerator.generateDiff(change, project);
-                if (!diff.isEmpty()) {
-                    diffBuilder.append(diff);
-                    System.out.println("Successfully generated diff for change");
-                }
-            } catch (VcsException e) {
-                System.err.println("Error generating diff: " + e.getMessage());
-                e.printStackTrace();
+            String diff = UnifiedDiffGenerator.generateDiff(change, project);
+            if (!diff.isEmpty()) {
+                diffBuilder.append(diff);
+                System.out.println("Successfully generated diff for change");
             }
         }
 

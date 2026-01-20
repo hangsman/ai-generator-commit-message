@@ -48,6 +48,7 @@ public class AiSettingsConfigurable implements Configurable {
         String currentOpenRouterModel = settingsComponent.getOpenRouterModel();
         String currentOpenRouterApiKey = settingsComponent.getOpenRouterApiKey();
         int currentTimeout = settingsComponent.getTimeout();
+        int currentMaxDiffChars = settingsComponent.getMaxDiffChars();
         String currentSystemPrompt = settingsComponent.getSystemPrompt();
         
         return currentProvider != settings.provider
@@ -60,6 +61,7 @@ public class AiSettingsConfigurable implements Configurable {
                 || !currentOpenRouterModel.equals(settings.providers.openRouter.model)
                 || !currentOpenRouterApiKey.equals(settings.providers.openRouter.apiKey)
                 || currentTimeout != settings.timeout
+                || currentMaxDiffChars != settings.maxDiffChars
                 || !currentSystemPrompt.equals(settings.systemPrompt);
     }
 
@@ -135,6 +137,7 @@ public class AiSettingsConfigurable implements Configurable {
         settings.openAiModel = openAiModel;
         settings.openAiApiKey = openAiApiKey;
         settings.timeout = settingsComponent.getTimeout();
+        settings.maxDiffChars = settingsComponent.getMaxDiffChars();
         settings.systemPrompt = systemPrompt;
         
         // Force state persistence
@@ -167,6 +170,7 @@ public class AiSettingsConfigurable implements Configurable {
         settingsComponent.setOpenRouterApiKey(providers.openRouter != null && providers.openRouter.apiKey != null
                 ? providers.openRouter.apiKey : "");
         settingsComponent.setTimeout(settings.timeout);
+        settingsComponent.setMaxDiffChars(settings.maxDiffChars);
         settingsComponent.setSystemPrompt(settings.systemPrompt != null ? settings.systemPrompt : getDefaultSystemPrompt());
     }
     
