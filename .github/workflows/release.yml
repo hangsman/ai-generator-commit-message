@@ -26,7 +26,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: '17'
+          java-version: '21'
           cache: 'gradle'
       
       - name: Grant execute permission for gradlew
@@ -34,6 +34,9 @@ jobs:
       
       - name: Build plugin
         run: ./gradlew buildPlugin --stacktrace
+
+      - name: Verify plugin compatibility
+        run: ./gradlew verifyPlugin --stacktrace
       
       - name: Verify plugin build
         run: |
@@ -79,6 +82,10 @@ jobs:
             - ✅ VCS-agnostic: Works with Git, SVN, Mercurial, Perforce, and any VCS
             - ✅ Cross-platform: Windows, macOS, Linux
             - ✅ Multiple AI providers: Ollama, OpenAI, OpenRouter
+
+            ### Compatibility
+            - Minimum IDE: IntelliJ IDEA 2025.3
+            - Verified target line: IntelliJ IDEA 2026.1
             
             ### Plugin File
             - `${{ steps.plugin.outputs.name }}`
@@ -86,4 +93,3 @@ jobs:
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-

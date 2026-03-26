@@ -29,11 +29,11 @@
     ]]></description>
 
     <change-notes><![CDATA[
-    <h2>1.0.0</h2>
+    <h2>1.0.5</h2>
     <ul>
-        <li>Initial release</li>
-        <li>Generate commit messages using Ollama AI</li>
-        <li>Configurable Ollama endpoint</li>
+        <li>Migrate the build to IntelliJ Platform Gradle Plugin 2.x</li>
+        <li>Raise the minimum supported IDE version to IntelliJ IDEA 2025.3</li>
+        <li>Align the plugin with the IntelliJ IDEA 2026.1 platform line</li>
     </ul>
     ]]></change-notes>
 

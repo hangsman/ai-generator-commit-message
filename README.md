@@ -22,7 +22,7 @@ An IntelliJ IDEA plugin that automatically generates professional commit message
 
 ### 📋 Prerequisites
 
-- IntelliJ IDEA 2023.2 or higher
+- IntelliJ IDEA 2025.3 or higher
 - **For Ollama**: [Ollama](https://ollama.ai/) running locally with a downloaded model (e.g., qwen3:8b, llama2, codellama)
 - **For OpenAI**: Valid OpenAI API key
 
@@ -220,9 +220,10 @@ The workflow will:
 
 ### 🛠️ Tech Stack
 
-- **Language**: Java 17
-- **Build Tool**: Gradle 8.5
+- **Language**: Java 21
+- **Build Tool**: Gradle 9.4.1
 - **Framework**: IntelliJ Platform SDK
+- **Target IDE**: IntelliJ IDEA 2025.3+
 - **Dependencies**:
   - OkHttp 4.12.0 - HTTP client
   - Gson 2.10.1 - JSON parsing
@@ -260,7 +261,7 @@ Issues and Pull Requests are welcome!
 
 ### 📋 前置要求
 
-- IntelliJ IDEA 2023.2 或更高版本
+- IntelliJ IDEA 2025.3 或更高版本
 - **使用 Ollama**：本地运行 [Ollama](https://ollama.ai/) 并下载模型（如 qwen3:8b、llama2、codellama）
 - **使用 OpenAI**：有效的 OpenAI API 密钥
 
@@ -277,6 +278,7 @@ cd ai-generator-commit-message
 2. 构建插件：
 ```bash
 ./gradlew buildPlugin
+./gradlew verifyPlugin
 ```
 
 3. 在 IntelliJ IDEA 中安装：
@@ -413,6 +415,7 @@ src/main/java/com/github/jdami/aicommit/
 
 ```bash
 ./gradlew buildPlugin
+./gradlew verifyPlugin
 ```
 
 生成的插件位于 `build/distributions/` 目录。
@@ -458,9 +461,10 @@ git push origin v1.0.3
 
 ### 🛠️ 技术栈
 
-- **语言**：Java 17
-- **构建工具**：Gradle 8.5
+- **语言**：Java 21
+- **构建工具**：Gradle 9.4.1
 - **框架**：IntelliJ Platform SDK
+- **目标 IDE**：IntelliJ IDEA 2025.3+
 - **依赖**：
   - OkHttp 4.12.0 - HTTP 客户端
   - Gson 2.10.1 - JSON 解析
