@@ -36,6 +36,7 @@ public class AiSettingsComponent {
     private final JBPasswordField openRouterApiKeyField = new JBPasswordField();
     private final JSpinner timeoutSpinner = new JSpinner(new SpinnerNumberModel(30, 5, 300, 5));
     private final JComboBox<ContextWindowPreset> contextWindowCombo = new JComboBox<>(ContextWindowPreset.values());
+    private final JCheckBox includeClaudeMdCheckBox = new JCheckBox("启用（项目根目录需存在 CLAUDE.md 文件）");
     private final JTextArea systemPromptArea = new JTextArea(5, 40);
 
     private JBLabel createLabel(String text) {
@@ -73,6 +74,14 @@ public class AiSettingsComponent {
         contextWindowCombo.setSelectedItem(ContextWindowPreset.SMALL_8K); // Default
         contextWindowPanel.add(contextWindowCombo);
 
+        // CLAUDE.md Panel
+        JPanel claudeMdPanel = new JPanel(new BorderLayout());
+        JBLabel claudeMdHintLabel = new JBLabel("将项目根目录 CLAUDE.md 文件内容发送给 AI，帮助理解项目结构");
+        claudeMdHintLabel.setForeground(JBUI.CurrentTheme.ContextHelp.FOREGROUND);
+        claudeMdHintLabel.setFont(JBUI.Fonts.smallFont());
+        claudeMdPanel.add(includeClaudeMdCheckBox, BorderLayout.NORTH);
+        claudeMdPanel.add(claudeMdHintLabel, BorderLayout.SOUTH);
+
         // Create release link panel
         JPanel linkPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
         JLabel linkLabel = new JLabel("<html>插件发布地址: <a href='https://linux.do/t/topic/1415731/65'>LINUX.DO</a></html>");
@@ -98,6 +107,7 @@ public class AiSettingsComponent {
                 .addVerticalGap(5)
                 .addComponent(new com.intellij.ui.TitledSeparator("Content Limit Settings"))
                 .addLabeledComponent(createLabel("上下文窗口: "), contextWindowPanel, 1, false)
+                .addLabeledComponent(createLabel("包含 CLAUDE.md: "), claudeMdPanel, 1, false)
                 .addVerticalGap(5)
                 .addComponent(new com.intellij.ui.TitledSeparator("Generation Parameters"))
                 .addLabeledComponent(createLabel("System Prompt: "), scrollPane, 1, false)
@@ -222,6 +232,14 @@ public class AiSettingsComponent {
 
     public void setMaxDiffChars(int maxDiffChars) {
         contextWindowCombo.setSelectedItem(ContextWindowPreset.fromMaxChars(maxDiffChars));
+    }
+
+    public boolean isIncludeClaudeMd() {
+        return includeClaudeMdCheckBox.isSelected();
+    }
+
+    public void setIncludeClaudeMd(boolean includeClaudeMd) {
+        includeClaudeMdCheckBox.setSelected(includeClaudeMd);
     }
 
     public String getOpenAiEndpoint() {

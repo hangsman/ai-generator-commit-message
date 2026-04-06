@@ -1,6 +1,7 @@
 package com.github.jdami.aicommit.service.util;
 
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Utility to build prompts for commit message generation.
@@ -10,7 +11,21 @@ public final class PromptBuilder {
     private PromptBuilder() {
     }
 
+    /**
+     * Build prompt with diff content only (backward compatible).
+     */
     public static String buildPrompt(@NotNull String diffContent) {
+        return buildPrompt(diffContent, null);
+    }
+
+    /**
+     * Build prompt with diff content and optional project context from CLAUDE.md.
+     *
+     * @param diffContent     The git diff content
+     * @param projectContext  Optional project context from CLAUDE.md (can be null)
+     * @return The complete prompt for AI
+     */
+    public static String buildPrompt(@NotNull String diffContent, @Nullable String projectContext) {
         // First try to compress by removing context lines if oversized
         String compressedDiff = DiffCompressor.compress(diffContent);
         
@@ -24,8 +39,18 @@ public final class PromptBuilder {
             System.out.println("Truncated to: " + DiffTruncator.getStats(processedDiff));
             System.out.println("================================");
         }
-        
+
+        // Build project context section if available
+        String projectContextSection = "";
+        if (projectContext != null && !projectContext.isEmpty()) {
+            projectContextSection = "## 项目上下文（来自 CLAUDE.md）\n\n" +
+                    "以下是项目的上下文信息，请参考这些信息来更好地理解项目结构和约定：\n\n" +
+                    "```\n" + projectContext + "\n```\n\n" +
+                    "---\n\n";
+        }
+
         return "请分析以下代码变更（Diff）并生成专业的 commit message。\n\n" +
+                projectContextSection +
                 "## 分析步骤\n\n" +
                 "1. **识别变更类型**\n" +
                 "   - 检查是否有新增文件（new file mode）→ 可能是 feat\n" +

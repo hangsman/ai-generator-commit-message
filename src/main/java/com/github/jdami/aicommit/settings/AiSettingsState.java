@@ -97,6 +97,13 @@ public class AiSettingsState implements PersistentStateComponent<AiSettingsState
      * Default: 20000 (~5.7K tokens) - safe for most models
      */
     public int maxDiffChars = 20000;
+
+    /**
+     * Whether to include CLAUDE.md content from project root in the prompt.
+     * This helps AI understand project-specific conventions and structure.
+     */
+    public boolean includeClaudeMd = true;
+
     public String systemPrompt = "你是一个专业的 Git Commit Message 生成器。你的任务是分析代码变更并生成高质量、结构化的提交信息。\n\n"
             +
             "## 变更类型识别规则\n\n" +
@@ -224,6 +231,7 @@ public class AiSettingsState implements PersistentStateComponent<AiSettingsState
         this.openAiApiKey = this.providers.openAi.apiKey;
         this.openAiModel = this.providers.openAi.model;
         this.timeout = 30;
+        this.includeClaudeMd = true;
         this.systemPrompt = "你是一个专业的 Git Commit Message 生成器。你的任务是分析代码变更并生成高质量、结构化的提交信息。\n\n"
                 +
                 "## 变更类型识别规则\n\n" +

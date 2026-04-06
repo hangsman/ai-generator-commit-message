@@ -23,9 +23,22 @@ public class AiService {
     private volatile AiProviderClient activeClient;
     private final Object lock = new Object();
 
+    /**
+     * Generate commit message with diff content only (backward compatible).
+     */
     public String generateCommitMessage(@NotNull String diffContent, @Nullable ProgressIndicator indicator) throws IOException {
+        return generateCommitMessage(diffContent, null, indicator);
+    }
+
+    /**
+     * Generate commit message with diff content and optional project context from CLAUDE.md.
+     */
+    public String generateCommitMessage(@NotNull String diffContent, @Nullable String projectContext, @Nullable ProgressIndicator indicator) throws IOException {
         AiSettingsState settings = AiSettingsState.getInstance();
-        String prompt = PromptBuilder.buildPrompt(diffContent);
+
+        // Only include project context if enabled in settings
+        String effectiveProjectContext = settings.includeClaudeMd ? projectContext : null;
+        String prompt = PromptBuilder.buildPrompt(diffContent, effectiveProjectContext);
         GenerationInputs inputs = buildInputs(prompt, settings);
         AiProviderClient client = selectProvider(settings);
 

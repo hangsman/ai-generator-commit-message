@@ -1,6 +1,7 @@
 package com.github.jdami.aicommit.actions;
 
 import com.github.jdami.aicommit.service.AiService;
+import com.github.jdami.aicommit.util.ClaudeMdReader;
 import com.github.jdami.aicommit.util.UnifiedDiffGenerator;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
@@ -129,8 +130,16 @@ public class GenerateCommitMessageAction extends AnAction {
                     indicator.setFraction(0.6);
                     indicator.checkCanceled();
 
-                    // Call Ai service
-                    generatedMessage = getAiService().generateCommitMessage(diffContent, indicator);
+                    // Read CLAUDE.md for project context
+                    String projectContext = ClaudeMdReader.readClaudeMd(project);
+                    if (projectContext != null) {
+                        System.out.println("=== CLAUDE.md Context ===");
+                        System.out.println("Content length: " + projectContext.length() + " characters");
+                        System.out.println("=========================");
+                    }
+
+                    // Call Ai service with project context
+                    generatedMessage = getAiService().generateCommitMessage(diffContent, projectContext, indicator);
 
                     indicator.setFraction(1.0);
 

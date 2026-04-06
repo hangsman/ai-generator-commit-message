@@ -50,7 +50,8 @@ public class AiSettingsConfigurable implements Configurable {
         int currentTimeout = settingsComponent.getTimeout();
         int currentMaxDiffChars = settingsComponent.getMaxDiffChars();
         String currentSystemPrompt = settingsComponent.getSystemPrompt();
-        
+        boolean currentIncludeClaudeMd = settingsComponent.isIncludeClaudeMd();
+
         return currentProvider != settings.provider
                 || !currentEndpoint.equals(settings.providers.ollama.endpoint)
                 || !currentOllamaModel.equals(settings.providers.ollama.model)
@@ -62,7 +63,8 @@ public class AiSettingsConfigurable implements Configurable {
                 || !currentOpenRouterApiKey.equals(settings.providers.openRouter.apiKey)
                 || currentTimeout != settings.timeout
                 || currentMaxDiffChars != settings.maxDiffChars
-                || !currentSystemPrompt.equals(settings.systemPrompt);
+                || !currentSystemPrompt.equals(settings.systemPrompt)
+                || currentIncludeClaudeMd != settings.includeClaudeMd;
     }
 
     @Override
@@ -138,6 +140,7 @@ public class AiSettingsConfigurable implements Configurable {
         settings.openAiApiKey = openAiApiKey;
         settings.timeout = settingsComponent.getTimeout();
         settings.maxDiffChars = settingsComponent.getMaxDiffChars();
+        settings.includeClaudeMd = settingsComponent.isIncludeClaudeMd();
         settings.systemPrompt = systemPrompt;
         
         // Force state persistence
@@ -171,6 +174,7 @@ public class AiSettingsConfigurable implements Configurable {
                 ? providers.openRouter.apiKey : "");
         settingsComponent.setTimeout(settings.timeout);
         settingsComponent.setMaxDiffChars(settings.maxDiffChars);
+        settingsComponent.setIncludeClaudeMd(settings.includeClaudeMd);
         settingsComponent.setSystemPrompt(settings.systemPrompt != null ? settings.systemPrompt : getDefaultSystemPrompt());
     }
     
